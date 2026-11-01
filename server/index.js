@@ -28,7 +28,7 @@ const MAX_HISTORY_MESSAGES = 12;
 const MAX_CHAT_SUGGESTIONS = 3;
 const CART_TAG = /\[\[carrito:([^\]]*)\]\]/gi;
 const INCOMPATIBILITY_WARNING =
-  /\bno\b.*\b(corre|corren|funciona|anda|andan|alcanza|cumple|es compatible)\b|incompatible|por debajo/s;
+  /\bno\b.*\b(corr|funcion|anda|alcanz|cumpl|llega|compatible|soporta)\w*|incompatible|insuficiente|por debajo/s;
 
 const ACTIVATION_INSTRUCTIONS = {
   Steam: 'Abrí Steam, andá a Juegos > Activar un producto en Steam y pegá tu clave.',
@@ -147,6 +147,7 @@ function enforceCompatibility(parsed, analysis) {
   const { target, results, alternatives } = analysis;
 
   if (target && !isViable(target) && !INCOMPATIBILITY_WARNING.test(normalize(parsed.reply))) {
+    console.warn(`Respuesta del modelo descartada: no advierte que ${target.name} es inviable`);
     return null;
   }
 

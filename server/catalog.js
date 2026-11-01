@@ -20,7 +20,7 @@ const catalog = [
     stockKeys: 25,
     minCpu: 'Intel Core i7-6700 o AMD Ryzen 5 1600',
     minGpu: 'GeForce GTX 1060 6 GB o Radeon RX 580 8 GB',
-    minRam: 12,
+    minRamGb: 12,
     os: 'Windows 10 64 bits',
     storage: '70 GB en SSD',
     minCpuScore: 80,
@@ -39,7 +39,7 @@ const catalog = [
     stockKeys: 18,
     minCpu: 'Intel Core i5-8400 o AMD Ryzen 3 3300X',
     minGpu: 'GeForce GTX 1060 3 GB o Radeon RX 580 4 GB',
-    minRam: 12,
+    minRamGb: 12,
     os: 'Windows 10',
     storage: '60 GB',
     minCpuScore: 92,
@@ -58,7 +58,7 @@ const catalog = [
     stockKeys: 12,
     minCpu: 'Intel Core i5-4690 o AMD FX 8350',
     minGpu: 'GeForce GTX 970 o Radeon RX 480 (4 GB de VRAM)',
-    minRam: 8,
+    minRamGb: 8,
     os: 'Windows 10 64 bits',
     storage: '150 GB en SSD',
     minCpuScore: 56,
@@ -77,7 +77,7 @@ const catalog = [
     stockKeys: 30,
     minCpu: 'Intel Core i5-6600K o AMD Ryzen 5 1600',
     minGpu: 'GeForce GTX 1050 Ti o Radeon RX 570',
-    minRam: 8,
+    minRamGb: 8,
     os: 'Windows 10 64 bits',
     storage: '100 GB',
     minCpuScore: 58,
@@ -96,7 +96,7 @@ const catalog = [
     stockKeys: 20,
     minCpu: 'No aplica: key de consola',
     minGpu: 'No aplica: key de consola',
-    minRam: 0,
+    minRamGb: 0,
     os: 'Xbox Series X|S',
     storage: '135 GB',
     minCpuScore: 0,
@@ -115,7 +115,7 @@ const catalog = [
     stockKeys: 15,
     minCpu: 'Doble núcleo a 2.4 GHz',
     minGpu: 'GeForce GTX 950, Radeon R7 360 o Intel HD Graphics 630',
-    minRam: 8,
+    minRamGb: 8,
     os: 'Windows 10 64 bits',
     storage: '11 GB',
     minCpuScore: 15,
@@ -134,7 +134,7 @@ const catalog = [
     stockKeys: 40,
     minCpu: '2 GHz',
     minGpu: '256 MB de video, Shader Model 3.0',
-    minRam: 2,
+    minRamGb: 2,
     os: 'Windows Vista o superior',
     storage: '500 MB',
     minCpuScore: 5,
@@ -153,7 +153,7 @@ const catalog = [
     stockKeys: 22,
     minCpu: 'Intel Core i3-3240 o AMD FX-4300',
     minGpu: 'GeForce GTX 560 Ti o Radeon HD 7750 (1 GB)',
-    minRam: 4,
+    minRamGb: 4,
     os: 'Windows 10 21H1 o superior',
     storage: '9 GB',
     minCpuScore: 28,
@@ -172,7 +172,7 @@ const catalog = [
     stockKeys: 35,
     minCpu: '2 GHz',
     minGpu: '128 MB de video, Shader Model 2.0',
-    minRam: 2.5,
+    minRamGb: 2.5,
     os: 'Windows XP o superior',
     storage: '200 MB',
     minCpuScore: 5,
@@ -191,7 +191,7 @@ const catalog = [
     stockKeys: 4,
     minCpu: 'Intel Core i3 M380',
     minGpu: 'Intel HD 4000',
-    minRam: 2,
+    minRamGb: 2,
     os: 'Windows 7 o superior',
     storage: '1.2 GB',
     minCpuScore: 16,
@@ -202,10 +202,10 @@ const catalog = [
   },
 ];
 
-const describeSpecs = ({ platform, minCpu, minGpu, minRam, os, storage }) =>
+const describeSpecs = ({ platform, minCpu, minGpu, minRamGb, os, storage }) =>
   platform === 'Xbox'
     ? `Consola ${os}, ${storage}`
-    : `${os}; CPU ${minCpu}; GPU ${minGpu}; ${minRam} GB de RAM; ${storage}`;
+    : `${os}; CPU ${minCpu}; GPU ${minGpu}; ${minRamGb} GB de RAM; ${storage}`;
 
 // Catálogo en memoria: el stock se reinicia con cada arranque del servidor.
 export const products = catalog.map((product) => ({

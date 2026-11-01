@@ -194,9 +194,9 @@ function checkGpu(gpu, product) {
 
 function checkRam(ramGb, product) {
   if (ramGb === null) return { status: 'unknown', detail: 'Falta saber cuánta RAM tenés' };
-  return ramGb >= product.minRam
+  return ramGb >= product.minRamGb
     ? { status: 'ok', detail: `${ramGb} GB de RAM: cumple el mínimo` }
-    : { status: 'fail', detail: `${ramGb} GB de RAM: este juego necesita ${product.minRam} GB` };
+    : { status: 'fail', detail: `${ramGb} GB de RAM: este juego necesita ${product.minRamGb} GB` };
 }
 
 export function analyzeProduct(product, hardware) {
