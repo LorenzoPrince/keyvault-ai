@@ -10,13 +10,14 @@ import {
   findCpu,
   findGpu,
   findMentionedProduct,
+  findMentionedProducts,
   GPU_OPTIONS,
   isViable,
   normalize,
   parseHardware,
   RAM_OPTIONS,
 } from './hardware.js';
-import { buildCompatibilityReply, getMockReply } from './mockAssistant.js';
+import { buildClosingReply, buildCompatibilityReply, getMockReply } from './mockAssistant.js';
 import { getSalesHistory, getStats, recordConsultation, recordOrder } from './sales.js';
 
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,12 @@ const MAX_MESSAGE_LENGTH = 1000;
 const MAX_HISTORY_MESSAGES = 12;
 const MAX_CHAT_SUGGESTIONS = 3;
 const MAX_INQUIRY_ITEMS = 3;
+const ORDER_CHANNELS = new Set(['web', 'concierge', 'rescate']);
+const PRIVACY_NOTICE =
+  '🔒 Por tu seguridad, nunca compartas contraseñas ni datos bancarios en este chat. Solo requerimos tu correo para la entrega digital';
+const PURCHASE_INTENT =
+  /\b(quiero|voy a|vamos a) (comprar\w*|llevar\w*)|\bcomprarlo\b|\blo compro\b|\bcomprame\b|\breserv[ao]\w*|\bme lo llevo\b|\blo llevo\b|\blo quiero\b/;
+const PURCHASE_NEGATION = /\bno (lo )?(quiero|voy a|compro|llevo|reserves)\b/;
 const CART_TAG = /\[\[carrito:([^\]]*)\]\]/gi;
 const INCOMPATIBILITY_WARNING =
   /\bno\b.*\b(corr|funcion|anda|alcanz|cumpl|llega|compatible|soporta)\w*|incompatible|insuficiente|por debajo/s;
@@ -46,6 +53,7 @@ Reglas:
 - Si el juego consultado corre, aunque sea justo, ofrécele ese juego. Solo propón otros si no corre, y nunca más de tres.
 - Si el cliente no dio suficientes datos, pide procesador, placa de video y RAM antes de asegurar que un juego le funciona.
 - Responde en español rioplatense con voseo (tenés, podés, mirá), nunca con "tú", en texto plano y sin markdown. Máximo 80 palabras.
+- Nunca pidas contraseñas, tarjetas ni datos bancarios: solo el correo, en la tarjeta de compra.
 - No digas que agregaste algo al carrito: el cliente lo hace con el botón que aparece debajo de tu mensaje.
 - Usa solo los datos del catálogo: nunca inventes precios, stock ni descuentos. No ofrezcas juegos sin stock.
 - La plataforma indicada es la única en la que se activa la key.
@@ -169,13 +177,38 @@ function enforceCompatibility(parsed, analysis) {
   return { ...parsed, suggestedProducts: allowed.length > 0 ? allowed : defaults };
 }
 
-async function generateReply({ message, history, analysis }) {
-  const fallback = () => ({ ...getMockReply(message, products, analysis), source: 'mock' });
+const hasPurchaseIntent = (message) => {
+  const text = normalize(message);
+  return PURCHASE_INTENT.test(text) && !PURCHASE_NEGATION.test(text);
+};
+
+// "Quiero comprarlo" remite al último juego nombrado; si ese turno nombró varios, es ambiguo.
+function findPurchaseTarget(message, history) {
+  for (const { content } of [{ content: message }, ...[...history].reverse()]) {
+    const mentioned = findMentionedProducts(content, products);
+    if (mentioned.length > 0) return mentioned.length === 1 ? mentioned[0] : null;
+  }
+  return null;
+}
+
+const closingInstruction = ({ name, price }) =>
+  `\n\nCIERRE: el cliente quiere comprar ${name} (USD ${price}). Festejá la decisión en una frase y decile que deje su email y toque "Confirmar y Emitir Key" en la tarjeta de abajo. No hables de requisitos y no agregues la línea [[carrito]].`;
+
+async function generateReply({ message, history, analysis, closing = null }) {
+  const fallback = () => ({
+    ...(closing
+      ? { reply: buildClosingReply(closing), suggestedProducts: [] }
+      : getMockReply(message, products, analysis)),
+    source: 'mock',
+  });
   if (!openai) return fallback();
 
   try {
     const content = await requestCompletion([
-      { role: 'system', content: buildSystemPrompt(analysis) },
+      {
+        role: 'system',
+        content: `${buildSystemPrompt(analysis)}${closing ? closingInstruction(closing) : ''}`,
+      },
       ...history,
       { role: 'user', content: message },
     ]);
@@ -235,13 +268,14 @@ const summarizeTarget = (target) =>
     checks: target.checks,
   };
 
-function recordAnalysis(sessionId, analysis, suggestedProducts, consulted) {
+function recordAnalysis(sessionId, analysis, suggestedProducts, consulted, isInquiry = false) {
   const target = analysis?.target;
   recordConsultation({
     sessionId,
     recommended: suggestedProducts,
     warned: target && !isViable(target) ? [target.productId] : [],
     consulted,
+    isInquiry,
   });
 }
 
@@ -330,7 +364,7 @@ app.post('/api/compatibility', (req, res) => {
 });
 
 app.post('/api/orders', (req, res) => {
-  const { items, customerEmail, sessionId } = req.body ?? {};
+  const { items, customerEmail, sessionId, channel } = req.body ?? {};
 
   if (typeof customerEmail !== 'string' || !EMAIL_PATTERN.test(customerEmail)) {
     return res.status(400).json({ error: 'customerEmail inválido' });
@@ -389,7 +423,7 @@ app.post('/api/orders', (req, res) => {
     createdAt: new Date().toISOString(),
   };
 
-  recordOrder(order, sessionId);
+  recordOrder(order, sessionId, ORDER_CHANNELS.has(channel) ? channel : 'web');
   res.status(201).json(order);
 });
 
@@ -425,7 +459,7 @@ app.post('/api/ai/parse-inquiry', async (req, res) => {
     .slice(0, MAX_INQUIRY_ITEMS);
   const recommendedProductIds = recommended.map(({ id }) => id);
 
-  recordAnalysis(sessionId, analysis, recommendedProductIds, product ? [product.id] : []);
+  recordAnalysis(sessionId, analysis, recommendedProductIds, product ? [product.id] : [], true);
 
   res.json({
     replyText: reply,
@@ -458,20 +492,33 @@ app.post('/api/chat', async (req, res) => {
   const safeHistory = sanitizeHistory(history);
   const customerMessages = safeHistory.filter(({ role }) => role === 'user').map(({ content }) => content);
   const hardware = parseHardware([...customerMessages, message]);
-  const mentioned = findMentionedProduct(message, products);
+  const wantsToBuy = hasPurchaseIntent(message);
+  const mentioned = wantsToBuy
+    ? findPurchaseTarget(message, safeHistory)
+    : findMentionedProduct(message, products);
   const analysis = hardware ? analyzeCatalog(products, hardware, mentioned?.id ?? null) : null;
 
-  const result = await generateReply({ message, history: safeHistory, analysis });
-  const suggestedProducts = result.suggestedProducts.slice(0, MAX_CHAT_SUGGESTIONS);
-  recordAnalysis(sessionId, analysis, suggestedProducts, mentioned ? [mentioned.id] : []);
+  // El cierre nunca se ofrece sobre un juego que el motor marcó como inviable o que no tiene stock.
+  const isSafeToClose =
+    wantsToBuy && mentioned?.stockKeys > 0 && (!analysis?.target || isViable(analysis.target));
+  const closing = isSafeToClose ? mentioned : null;
+
+  const result = await generateReply({ message, history: safeHistory, analysis, closing });
+  const suggestedProducts = closing ? [] : result.suggestedProducts.slice(0, MAX_CHAT_SUGGESTIONS);
+  recordAnalysis(sessionId, analysis, closing ? [closing.id] : suggestedProducts, mentioned ? [mentioned.id] : []);
 
   return res.json({
-    reply: result.reply,
+    reply: closing ? `${result.reply}\n\n${PRIVACY_NOTICE}` : result.reply,
     suggestedProducts,
     compatibility: analysis
       ? { hardware: analysis.hardware, target: summarizeTarget(analysis.target) }
       : null,
     source: result.source,
+    ...(closing && {
+      action: 'PROMPT_CHECKOUT',
+      item: { id: closing.id, name: closing.name, price: closing.price },
+      privacyNotice: PRIVACY_NOTICE,
+    }),
   });
 });
 

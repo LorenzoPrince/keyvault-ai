@@ -4,11 +4,11 @@ import { createOrder } from '../lib/api.js';
 import { formatPrice } from '../lib/format.js';
 import CopyButton from './CopyButton.jsx';
 
-export default function InstantOrder({ item, channel, onCompleted }) {
+export default function InstantOrder({ item, channel, initialOrder = null, onCompleted }) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isPaying, setIsPaying] = useState(false);
-  const [order, setOrder] = useState(null);
+  const [order, setOrder] = useState(initialOrder);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -21,7 +21,7 @@ export default function InstantOrder({ item, channel, onCompleted }) {
         channel,
       });
       setOrder(createdOrder);
-      onCompleted();
+      onCompleted(createdOrder);
     } catch (orderError) {
       setError(orderError.message);
     } finally {

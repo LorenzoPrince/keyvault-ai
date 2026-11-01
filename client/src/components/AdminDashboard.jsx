@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   Bot,
   CircleDollarSign,
+  Clock,
   Eye,
   EyeOff,
   LifeBuoy,
@@ -21,6 +22,16 @@ import StockBadge from './StockBadge.jsx';
 const PANEL_CLASSES = 'rounded-2xl border border-ink-700/70 bg-ink-850 shadow-card';
 
 const maskKey = (key) => `•••••-•••••-${key.slice(-5)}`;
+
+const CHANNEL_BADGES = { concierge: 'Concierge IA', rescate: 'Rescate WhatsApp' };
+const MINUTES_PER_HOUR = 60;
+
+function formatDuration(minutes) {
+  if (minutes < MINUTES_PER_HOUR) return `${minutes} min`;
+  const remainder = minutes % MINUTES_PER_HOUR;
+  const hours = `${Math.floor(minutes / MINUTES_PER_HOUR)} h`;
+  return remainder > 0 ? `${hours} ${remainder} min` : hours;
+}
 
 const plural = (count, singular, pluralForm) => `${count} ${count === 1 ? singular : pluralForm}`;
 
@@ -85,6 +96,11 @@ function SaleRow({ sale }) {
         <p className="font-medium">{sale.game}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <PlatformBadge platform={sale.platform} />
+          {CHANNEL_BADGES[sale.channel] && (
+            <span className="rounded-md border border-xbox/40 bg-xbox/10 px-2 py-0.5 text-xs font-semibold text-xbox">
+              {CHANNEL_BADGES[sale.channel]}
+            </span>
+          )}
           {sale.savedByAdvice && (
             <span className="rounded-md border border-primary-light/40 bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary-light">
               Venta salvada
@@ -349,7 +365,7 @@ export default function AdminDashboard({ onGoToStore }) {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi
           icon={CircleDollarSign}
           label="Ingresos Generados"
@@ -360,13 +376,19 @@ export default function AdminDashboard({ onGoToStore }) {
           icon={ShoppingBag}
           label="Pedidos Automatizados"
           value={stats.totalOrders}
-          hint={`${stats.aiAssistedCount} con asesoramiento de IA`}
+          hint={`${plural(stats.aiAssistedCount, 'asesorado', 'asesorados')} por IA, ${plural(stats.conciergeOrders, 'cerrado', 'cerrados')} en el chat`}
         />
         <Kpi
           icon={MessageCircleOff}
           label="Consultas de WhatsApp Evitadas"
           value={stats.consultationsAutomated}
           hint="Respondidas por el asesor sin intervención humana"
+        />
+        <Kpi
+          icon={Clock}
+          label="Tiempo Ahorrado (estimado)"
+          value={formatDuration(stats.timeSavedMinutes)}
+          hint="Supone 5 min por consulta y 3 min por pedido"
         />
       </div>
 

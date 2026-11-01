@@ -29,11 +29,17 @@ export function useChat() {
     append({ role: 'user', content: message });
     setIsLoading(true);
     try {
-      const { reply, source, suggestedProducts, compatibility } = await sendChatMessage({
-        message,
-        history,
+      const { reply, source, suggestedProducts, compatibility, action, item } =
+        await sendChatMessage({ message, history });
+      append({
+        role: 'assistant',
+        content: reply,
+        source,
+        suggestedProducts,
+        compatibility,
+        action,
+        item,
       });
-      append({ role: 'assistant', content: reply, source, suggestedProducts, compatibility });
     } catch (error) {
       append({ role: 'assistant', content: error.message, isError: true });
     } finally {
@@ -41,5 +47,12 @@ export function useChat() {
     }
   };
 
-  return { messages, isLoading, send };
+  // Guarda el pedido en el mensaje: la key sigue visible aunque se cierre el chat.
+  const attachOrder = (messageId, order) => {
+    setMessages((current) =>
+      current.map((message) => (message.id === messageId ? { ...message, order } : message)),
+    );
+  };
+
+  return { messages, isLoading, send, attachOrder };
 }

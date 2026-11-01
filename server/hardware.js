@@ -154,9 +154,13 @@ export function parseHardware(messages) {
   return hardware.cpu || hardware.gpu || hardware.ramGb ? hardware : null;
 }
 
-export function findMentionedProduct(message, products) {
+export function findMentionedProducts(message, products) {
   const text = normalize(message);
-  return products.find(({ id }) => ALIASES[id]?.some((alias) => text.includes(alias))) ?? null;
+  return products.filter(({ id }) => ALIASES[id]?.some((alias) => text.includes(alias)));
+}
+
+export function findMentionedProduct(message, products) {
+  return findMentionedProducts(message, products)[0] ?? null;
 }
 
 function compareScore(score, minimum) {

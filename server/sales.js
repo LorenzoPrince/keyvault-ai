@@ -3,12 +3,16 @@ const MAX_SESSIONS = 5000;
 const MAX_SESSION_ID_LENGTH = 64;
 const LOW_STOCK_THRESHOLD = 5;
 const TOP_GAMES_LIMIT = 5;
+// Supuestos de la estimación de tiempo ahorrado frente a atender por WhatsApp.
+const MINUTES_SAVED_PER_CONSULTATION = 5;
+const MINUTES_SAVED_PER_ORDER = 3;
 
 const orders = [];
 const sessions = new Map();
 const demandByProduct = new Map();
 let consultationCount = 0;
 let preventedPurchases = 0;
+let rescuedInquiries = 0;
 
 const toCents = (amount) => Math.round(amount * 100);
 
@@ -24,8 +28,15 @@ function getSession(sessionId) {
 }
 
 // recommended: juegos que el asesor avaló; warned: juegos que desaconsejó por hardware.
-export function recordConsultation({ sessionId, recommended = [], warned = [], consulted = [] }) {
+export function recordConsultation({
+  sessionId,
+  recommended = [],
+  warned = [],
+  consulted = [],
+  isInquiry = false,
+}) {
   consultationCount += 1;
+  if (isInquiry) rescuedInquiries += 1;
   preventedPurchases += warned.length;
   consulted.forEach((id) => demandByProduct.set(id, (demandByProduct.get(id) ?? 0) + 1));
 
@@ -36,7 +47,7 @@ export function recordConsultation({ sessionId, recommended = [], warned = [], c
 }
 
 // La atribución se calcula en el servidor con lo que el asesor respondió en esa sesión.
-export function recordOrder(order, sessionId) {
+export function recordOrder(order, sessionId, channel) {
   const session = getSession(sessionId);
   const boughtIds = order.items.map(({ productId }) => productId);
   const aiAssisted = Boolean(session) && boughtIds.some((id) => session.recommended.has(id));
@@ -45,12 +56,12 @@ export function recordOrder(order, sessionId) {
     session.warned.size > 0 &&
     boughtIds.some((id) => session.recommended.has(id) && !session.warned.has(id));
 
-  orders.push({ ...order, aiAssisted, savedByAdvice });
+  orders.push({ ...order, channel, aiAssisted, savedByAdvice });
 }
 
 export function getSalesHistory() {
   return orders
-    .flatMap(({ orderId, customerEmail, createdAt, aiAssisted, savedByAdvice, items }) =>
+    .flatMap(({ orderId, customerEmail, createdAt, channel, aiAssisted, savedByAdvice, items }) =>
       items.flatMap(({ name, platform, unitPrice, keys }) =>
         keys.map((key) => ({
           orderId,
@@ -60,6 +71,7 @@ export function getSalesHistory() {
           date: createdAt,
           price: unitPrice,
           key,
+          channel,
           aiAssisted,
           savedByAdvice,
         })),
@@ -112,6 +124,10 @@ export function getStats(products) {
     savedSalesCount: saved.length,
     savedSalesRevenue: sumRevenue(saved),
     consultationsAutomated: consultationCount,
+    rescuedInquiries,
+    conciergeOrders: orders.filter(({ channel }) => channel === 'concierge').length,
+    timeSavedMinutes:
+      consultationCount * MINUTES_SAVED_PER_CONSULTATION + orders.length * MINUTES_SAVED_PER_ORDER,
     preventedPurchases,
     ordersList: getSalesHistory(),
     topDemandedGames: topDemandedGames(products),

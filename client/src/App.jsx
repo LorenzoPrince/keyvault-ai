@@ -175,6 +175,7 @@ function App() {
           onToggle={() => setIsChatOpen((open) => !open)}
           products={products}
           onAddToCart={handleAddToCart}
+          onOrderCompleted={loadProducts}
         />
       )}
 

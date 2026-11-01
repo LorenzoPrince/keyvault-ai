@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bot, MessageCircle, Plus, SendHorizontal, X } from 'lucide-react';
 import { formatPrice } from '../lib/format.js';
+import InstantOrder from './InstantOrder.jsx';
 import TrafficLight from './TrafficLight.jsx';
 
 const SUGGESTIONS = [
@@ -9,7 +10,7 @@ const SUGGESTIONS = [
   '¿Qué juego de rol me recomendás?',
 ];
 
-function ChatBubble({ message, products, onAddToCart }) {
+function ChatBubble({ message, products, onAddToCart, onOrderCompleted }) {
   const isUser = message.role === 'user';
   const target = message.compatibility?.target;
   const suggested = (message.suggestedProducts ?? [])
@@ -39,6 +40,16 @@ function ChatBubble({ message, products, onAddToCart }) {
         >
           {message.content}
         </p>
+        {message.action === 'PROMPT_CHECKOUT' && (
+          <div className="mt-2">
+            <InstantOrder
+              item={message.item}
+              channel="concierge"
+              initialOrder={message.order}
+              onCompleted={(order) => onOrderCompleted(message.id, order)}
+            />
+          </div>
+        )}
         {suggested.length > 0 && (
           <div className="mt-2 grid gap-1.5">
             {suggested.map((product) => (
@@ -62,8 +73,15 @@ function ChatBubble({ message, products, onAddToCart }) {
   );
 }
 
-export default function ChatWidget({ chat, isOpen, onToggle, products, onAddToCart }) {
-  const { messages, isLoading, send } = chat;
+export default function ChatWidget({
+  chat,
+  isOpen,
+  onToggle,
+  products,
+  onAddToCart,
+  onOrderCompleted,
+}) {
+  const { messages, isLoading, send, attachOrder } = chat;
   const [draft, setDraft] = useState('');
   const logRef = useRef(null);
   const inputRef = useRef(null);
@@ -128,6 +146,10 @@ export default function ChatWidget({ chat, isOpen, onToggle, products, onAddToCa
                 message={message}
                 products={products}
                 onAddToCart={onAddToCart}
+                onOrderCompleted={(messageId, order) => {
+                  attachOrder(messageId, order);
+                  onOrderCompleted();
+                }}
               />
             ))}
             {isLoading && (

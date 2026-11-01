@@ -92,6 +92,9 @@ export function buildCompatibilityReply(analysis) {
   return { reply: replyForIncompatibleTarget(analysis), suggestedProducts: viableIds };
 }
 
+export const buildClosingReply = ({ name, platform, price }) =>
+  `¡Excelente elección! 🔥 ${name} para ${platform} a ${formatPrice(price)}. Dejá tu email en la tarjeta de abajo, tocá "Confirmar y Emitir Key" y te la entregamos al instante.`;
+
 function replyForProduct(product, text) {
   const { id, name, platform, genre, price, stockKeys, minSpecs, description } = product;
 

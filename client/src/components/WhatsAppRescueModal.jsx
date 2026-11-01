@@ -226,6 +226,7 @@ export default function WhatsAppRescueModal({ onClose, onOrderCompleted }) {
                 <InstantOrder
                   key={selectedItem.id}
                   item={selectedItem}
+                  channel="rescate"
                   onCompleted={onOrderCompleted}
                 />
               )}
