@@ -5,7 +5,7 @@ const WELCOME_MESSAGE = {
   id: 0,
   role: 'assistant',
   content:
-    '¡Buenas, gamer! 🎮 Soy el asesor de KeyVault AI. Contame qué PC tenés o qué te gusta jugar y te digo qué llevarte.',
+    '¡Buenas, gamer! 🎮 Soy el asesor de KeyVault, tu tienda gamer local. Contame qué PC tenés o qué te gusta jugar y te digo qué llevarte.',
 };
 
 export function useChat() {
@@ -29,8 +29,11 @@ export function useChat() {
     append({ role: 'user', content: message });
     setIsLoading(true);
     try {
-      const { reply, source, suggestedProducts } = await sendChatMessage({ message, history });
-      append({ role: 'assistant', content: reply, source, suggestedProducts });
+      const { reply, source, suggestedProducts, compatibility } = await sendChatMessage({
+        message,
+        history,
+      });
+      append({ role: 'assistant', content: reply, source, suggestedProducts, compatibility });
     } catch (error) {
       append({ role: 'assistant', content: error.message, isError: true });
     } finally {

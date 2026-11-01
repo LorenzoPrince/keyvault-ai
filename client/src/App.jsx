@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import AdminDashboard from './components/AdminDashboard.jsx';
 import Catalog from './components/Catalog.jsx';
 import CartDrawer from './components/CartDrawer.jsx';
 import ChatWidget from './components/ChatWidget.jsx';
+import CompatibilityBanner from './components/CompatibilityBanner.jsx';
+import CompatibilityModal from './components/CompatibilityModal.jsx';
 import Header from './components/Header.jsx';
 import Hero from './components/Hero.jsx';
 import { useCart } from './hooks/useCart.js';
 import { useChat } from './hooks/useChat.js';
+import { STORE_PATH, useRoute } from './hooks/useRoute.js';
 import { fetchProducts } from './lib/api.js';
 
 const TOAST_DURATION_MS = 2400;
+const EMPTY_HARDWARE = { cpuId: '', gpuId: '', ramGb: '' };
 
 function App() {
+  const { view, navigate } = useRoute();
+  const [compatibilityCheck, setCompatibilityCheck] = useState(null);
+  const [hardware, setHardware] = useState(EMPTY_HARDWARE);
   const [products, setProducts] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState('loading');
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -34,7 +42,7 @@ function App() {
 
   useEffect(() => {
     loadProducts();
-  }, [loadProducts]);
+  }, [loadProducts, view]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -71,6 +79,11 @@ function App() {
     chat.send(`Contame de ${product.name}: ¿qué requisitos tiene y dónde se activa?`);
   };
 
+  const handleAddFromCompatibility = (product) => {
+    setCompatibilityCheck(null);
+    handleAddToCart(product);
+  };
+
   const retryCatalog = () => {
     setCatalogStatus('loading');
     loadProducts();
@@ -83,22 +96,35 @@ function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header cartCount={cartCount} onOpenCart={() => setIsCartOpen(true)} />
+      <Header
+        view={view}
+        onNavigate={navigate}
+        cartCount={cartCount}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
 
-      <main className="flex-1">
-        <Hero products={products} onOpenChat={() => setIsChatOpen(true)} />
-        <Catalog
-          products={products}
-          status={catalogStatus}
-          onRetry={retryCatalog}
-          quantities={cart.quantities}
-          onAdd={handleAddToCart}
-          onAsk={handleAskAssistant}
-        />
+      <main key={view} className="flex-1 animate-fade-up">
+        {view === 'admin' ? (
+          <AdminDashboard onGoToStore={() => navigate(STORE_PATH)} />
+        ) : (
+          <>
+            <Hero products={products} onOpenChat={() => setIsChatOpen(true)} />
+            <CompatibilityBanner onOpen={() => setCompatibilityCheck({ productId: null })} />
+            <Catalog
+              products={products}
+              status={catalogStatus}
+              onRetry={retryCatalog}
+              quantities={cart.quantities}
+              onAdd={handleAddToCart}
+              onAsk={handleAskAssistant}
+              onCheck={(product) => setCompatibilityCheck({ productId: product.id })}
+            />
+          </>
+        )}
       </main>
 
       <footer className="border-t border-ink-700/70 px-4 py-6 pr-20 text-center text-xs text-ink-400 sm:pr-4">
-        KeyVault AI · Proyecto de demostración con pagos y claves simuladas.
+        KeyVault - Tu tienda gamer local · Proyecto de demostración con pagos y claves simuladas.
       </footer>
 
       {isCartOpen && (
@@ -113,15 +139,28 @@ function App() {
         />
       )}
 
-      <ChatWidget
-        chat={chat}
-        isOpen={isChatOpen}
-        onToggle={() => setIsChatOpen((open) => !open)}
-        products={products}
-        onAddToCart={handleAddToCart}
-      />
+      {compatibilityCheck && (
+        <CompatibilityModal
+          initialProductId={compatibilityCheck.productId}
+          products={products}
+          selection={hardware}
+          onSelectionChange={setHardware}
+          onClose={() => setCompatibilityCheck(null)}
+          onAddToCart={handleAddFromCompatibility}
+        />
+      )}
 
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-20 z-50 flex justify-center px-4">
+      {view === 'store' && (
+        <ChatWidget
+          chat={chat}
+          isOpen={isChatOpen}
+          onToggle={() => setIsChatOpen((open) => !open)}
+          products={products}
+          onAddToCart={handleAddToCart}
+        />
+      )}
+
+      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-28 z-50 flex justify-center px-4">
         {toast && (
           <p className="animate-fade-up rounded-lg border border-success/40 bg-ink-800 px-4 py-2 text-sm font-medium shadow-lg shadow-black/40">
             {toast.text}

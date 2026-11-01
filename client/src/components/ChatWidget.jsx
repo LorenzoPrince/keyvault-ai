@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bot, MessageCircle, Plus, SendHorizontal, X } from 'lucide-react';
 import { formatPrice } from '../lib/format.js';
+import TrafficLight from './TrafficLight.jsx';
 
 const SUGGESTIONS = [
   '¿Qué me corre con una GTX 1650?',
@@ -10,6 +11,7 @@ const SUGGESTIONS = [
 
 function ChatBubble({ message, products, onAddToCart }) {
   const isUser = message.role === 'user';
+  const target = message.compatibility?.target;
   const suggested = (message.suggestedProducts ?? [])
     .map((id) => products.find((product) => product.id === id))
     .filter(Boolean);
@@ -22,6 +24,12 @@ function ChatBubble({ message, products, onAddToCart }) {
         </span>
       )}
       <div className="max-w-[85%] min-w-0">
+        {target && (
+          <div className="mb-1.5 flex items-center justify-between gap-3 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-xs">
+            <span className="min-w-0 truncate text-ink-300">{target.name}</span>
+            <TrafficLight verdict={target.verdict} />
+          </div>
+        )}
         <p
           className={`rounded-2xl px-3.5 py-2 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap ${
             isUser
