@@ -1,30 +1,91 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/space-grotesk';
 @import 'tailwindcss';
 
 @theme {
-  --color-vault-950: #070a13;
-  --color-vault-900: #0b0f1a;
-  --color-vault-800: #131927;
-  --color-vault-700: #1f2738;
-  --color-vault-500: #5b6780;
-  --color-vault-300: #a9b4c9;
-  --color-vault-100: #e8ecf4;
+  --color-ink-950: #0a1020;
+  --color-ink-900: #0f172a;
+  --color-ink-850: #141d33;
+  --color-ink-800: #1b2640;
+  --color-ink-700: #2a3653;
+  --color-ink-400: #94a1b8;
+  --color-ink-300: #b8c2d6;
+  --color-ink-100: #e9edf5;
 
-  --color-neon-cyan: #22d3ee;
-  --color-neon-violet: #8b5cf6;
-  --color-neon-green: #34d399;
+  --color-primary: #6366f1;
+  --color-primary-light: #818cf8;
+  --color-accent: #06b6d4;
+  --color-accent-light: #22d3ee;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
 
-  --font-sans: 'Segoe UI', system-ui, Roboto, sans-serif;
+  --color-steam: #66c0f4;
+  --color-epic: #d6d9e0;
+  --color-xbox: #4ade80;
+
+  --font-sans: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Space Grotesk Variable', 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, Consolas, monospace;
 
-  --shadow-glow: 0 0 24px rgb(34 211 238 / 0.25);
+  --shadow-glow: 0 0 32px rgb(99 102 241 / 0.35);
+
+  --animate-slide-in: slide-in 0.25s ease-out;
+  --animate-pop-in: pop-in 0.2s ease-out;
+  --animate-fade-up: fade-up 0.25s ease-out;
+
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+  }
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
 }
 
 @layer base {
   html {
     color-scheme: dark;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
   }
 
   body {
-    @apply min-h-screen bg-vault-950 font-sans text-vault-100 antialiased;
+    @apply min-h-screen bg-ink-900 font-sans text-ink-100 antialiased;
+  }
+
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-light);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
