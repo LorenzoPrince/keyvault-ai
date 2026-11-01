@@ -1,0 +1,10 @@
+{
+  "name": "keyvault-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tienda digital de licencias y videojuegos",
+  "scripts": {
+    "dev:server": "npm --prefix server start",
+    "dev:client": "npm --prefix client dev"
+  }
+}
