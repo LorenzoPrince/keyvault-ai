@@ -28,6 +28,7 @@ export const fetchProducts = () => request('/products');
 export const fetchHardwareOptions = () => request('/hardware');
 export const createOrder = (order) => postJson('/orders', order);
 export const sendChatMessage = (chat) => postJson('/chat', chat);
+export const parseInquiry = (text) => postJson('/ai/parse-inquiry', { text });
 export const checkCompatibility = (selection) => postJson('/compatibility', selection);
 export const fetchAdminStats = (token) =>
   request('/admin/stats', { headers: token ? { 'x-admin-token': token } : {} });

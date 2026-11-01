@@ -7,6 +7,7 @@ import CompatibilityBanner from './components/CompatibilityBanner.jsx';
 import CompatibilityModal from './components/CompatibilityModal.jsx';
 import Header from './components/Header.jsx';
 import Hero from './components/Hero.jsx';
+import WhatsAppRescueModal from './components/WhatsAppRescueModal.jsx';
 import { useCart } from './hooks/useCart.js';
 import { useChat } from './hooks/useChat.js';
 import { STORE_PATH, useRoute } from './hooks/useRoute.js';
@@ -19,6 +20,7 @@ function App() {
   const { view, navigate } = useRoute();
   const [compatibilityCheck, setCompatibilityCheck] = useState(null);
   const [hardware, setHardware] = useState(EMPTY_HARDWARE);
+  const [isRescueOpen, setIsRescueOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState('loading');
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -79,6 +81,11 @@ function App() {
     chat.send(`Contame de ${product.name}: ¿qué requisitos tiene y dónde se activa?`);
   };
 
+  const handleHeroQuery = (text) => {
+    setIsChatOpen(true);
+    chat.send(text);
+  };
+
   const handleAddFromCompatibility = (product) => {
     setCompatibilityCheck(null);
     handleAddToCart(product);
@@ -108,7 +115,11 @@ function App() {
           <AdminDashboard onGoToStore={() => navigate(STORE_PATH)} />
         ) : (
           <>
-            <Hero products={products} onOpenChat={() => setIsChatOpen(true)} />
+            <Hero
+              products={products}
+              onAsk={handleHeroQuery}
+              onOpenRescue={() => setIsRescueOpen(true)}
+            />
             <CompatibilityBanner onOpen={() => setCompatibilityCheck({ productId: null })} />
             <Catalog
               products={products}
@@ -147,6 +158,13 @@ function App() {
           onSelectionChange={setHardware}
           onClose={() => setCompatibilityCheck(null)}
           onAddToCart={handleAddFromCompatibility}
+        />
+      )}
+
+      {isRescueOpen && (
+        <WhatsAppRescueModal
+          onClose={() => setIsRescueOpen(false)}
+          onOrderCompleted={loadProducts}
         />
       )}
 

@@ -32,7 +32,7 @@ export const CPU_OPTIONS = [
 ];
 
 export const GPU_OPTIONS = [
-  { id: 'igpu-legacy', label: 'Integrada antigua (Intel HD 2000 a 4000)', score: 5, pattern: /\bintel hd\b|\bhd graphics\b|\bintegrad[ao]s?\b|\bonboard\b|sin placa|no tengo placa/ },
+  { id: 'igpu-legacy', label: 'Integrada antigua (Intel HD 2000 a 4000)', score: 5, pattern: /\bintel hd\b|\bhd graphics\b|\bintegrad[ao]s?\b|\bonboard\b|sin placa|no tengo placa|viene con (?:el|la) (?:mother|placa madre)/ },
   { id: 'igpu-haswell', label: 'Intel HD 4400 / 4600 / 530', score: 8, pattern: /\bhd(?: graphics)? ?(?:4[4-9]\d{2}|5\d{2})\b/ },
   { id: 'igpu-uhd', label: 'Intel HD 630 / UHD 620 a 770', score: 13, pattern: /\bu?hd(?: graphics)? ?[67]\d{2}\b/ },
   { id: 'igpu-modern', label: 'AMD Vega integrada / Intel Iris Xe', score: 25, pattern: /\bvega\b|\biris\b/ },
@@ -57,7 +57,7 @@ export const GPU_OPTIONS = [
 const GPU_MATCH_ORDER = [...GPU_OPTIONS].reverse();
 
 const ALIASES = {
-  'cyberpunk-2077': ['cyberpunk'],
+  'cyberpunk-2077': ['cyberpunk', 'ciberpunk'],
   'elden-ring': ['elden'],
   'baldurs-gate-3': ['baldur', 'bg3'],
   'ea-sports-fc-25': ['fc 25', 'fc25', 'fifa'],

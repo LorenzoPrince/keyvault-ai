@@ -12,7 +12,7 @@ const LAMPS = [
   { id: 'green', on: 'bg-success shadow-[0_0_14px_var(--color-success)]' },
 ];
 
-export default function TrafficLight({ verdict, size = 'sm' }) {
+export default function TrafficLight({ verdict, label: customLabel, size = 'sm' }) {
   const { lamp, label } = VERDICTS[verdict];
   const lampSize = size === 'lg' ? 'size-5' : 'size-2.5';
 
@@ -30,7 +30,7 @@ export default function TrafficLight({ verdict, size = 'sm' }) {
         ))}
       </span>
       <span className={`font-semibold ${size === 'lg' ? 'font-display text-xl' : 'text-xs'}`}>
-        {label}
+        {customLabel ?? label}
       </span>
     </span>
   );
