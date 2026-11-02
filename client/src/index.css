@@ -65,6 +65,20 @@
 
   body {
     @apply min-h-screen bg-ink-900 font-sans text-ink-100 antialiased;
+    /* Grilla neón muy tenue para el clima cyberpunk sin restar legibilidad. */
+    background-image:
+      linear-gradient(rgb(129 140 248 / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(129 140 248 / 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgb(34 211 238 / 0.35);
+  }
+
+  * {
+    scrollbar-color: var(--color-ink-700) transparent;
   }
 
   button:not(:disabled),

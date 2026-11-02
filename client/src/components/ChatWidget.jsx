@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bot, MessageCircle, Plus, SendHorizontal, X } from 'lucide-react';
+import { Bot, History, MessageCircle, Plus, SendHorizontal, Sparkles, X } from 'lucide-react';
 import { formatPrice } from '../lib/format.js';
+import CompatibilityBadge from './CompatibilityBadge.jsx';
 import InstantOrder from './InstantOrder.jsx';
+import ProductCover from './ProductCover.jsx';
 import TrafficLight from './TrafficLight.jsx';
 
 const SUGGESTIONS = [
@@ -10,12 +12,48 @@ const SUGGESTIONS = [
   '¿Qué juego de rol me recomendás?',
 ];
 
-function ChatBubble({ message, products, onAddToCart, onOrderCompleted }) {
+function RecommendedProduct({ product, verdict, onAddToCart }) {
+  return (
+    <li className="flex animate-fade-up items-center gap-2.5 rounded-xl border border-accent/30 bg-ink-850 p-2 transition-colors hover:border-accent/70">
+      <ProductCover product={product} className="aspect-2/3 w-10 shrink-0 rounded-md" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-semibold text-white">{product.name}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-bold text-accent-light">{formatPrice(product.price)}</span>
+          {verdict && <CompatibilityBadge verdict={verdict} compact />}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onAddToCart(product)}
+        aria-label={`Agregar ${product.name} al carrito`}
+        className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg bg-primary px-2.5 text-xs font-semibold text-white transition-all hover:bg-primary-light hover:text-ink-950 active:scale-95"
+      >
+        <Plus className="size-3.5" aria-hidden="true" />
+        Agregar
+      </button>
+    </li>
+  );
+}
+
+function SupersededNote({ children }) {
+  return (
+    <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-ink-700 px-2.5 py-1.5 text-[11px] text-ink-400">
+      <History className="size-3.5 shrink-0" aria-hidden="true" />
+      {children}
+    </p>
+  );
+}
+
+// Solo la última respuesta del asesor tiene botones activos: si el cliente cambia de juego,
+// las sugerencias anteriores quedan como historial y no se pueden agregar por error.
+function ChatBubble({ message, isActive, products, verdicts, onAddToCart, onOrderCompleted }) {
   const isUser = message.role === 'user';
   const target = message.compatibility?.target;
   const suggested = (message.suggestedProducts ?? [])
     .map((id) => products.find((product) => product.id === id))
     .filter(Boolean);
+  const isCheckout = message.action === 'PROMPT_CHECKOUT';
 
   return (
     <li className={`flex animate-fade-up gap-2 ${isUser ? 'justify-end' : ''}`}>
@@ -40,7 +78,7 @@ function ChatBubble({ message, products, onAddToCart, onOrderCompleted }) {
         >
           {message.content}
         </p>
-        {message.action === 'PROMPT_CHECKOUT' && (
+        {isCheckout && (isActive || message.order) && (
           <div className="mt-2">
             <InstantOrder
               item={message.item}
@@ -50,23 +88,31 @@ function ChatBubble({ message, products, onAddToCart, onOrderCompleted }) {
             />
           </div>
         )}
-        {suggested.length > 0 && (
-          <div className="mt-2 grid gap-1.5">
-            {suggested.map((product) => (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => onAddToCart(product)}
-                className="flex min-h-9 items-center justify-between gap-2 rounded-lg border border-accent/40 bg-accent/5 px-2.5 py-1.5 text-left text-xs font-semibold text-accent-light transition-colors hover:bg-accent/15"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Plus className="size-3.5 shrink-0" aria-hidden="true" />
-                  {product.name}
-                </span>
-                <span className="whitespace-nowrap">{formatPrice(product.price)}</span>
-              </button>
-            ))}
+        {isCheckout && !isActive && !message.order && (
+          <SupersededNote>Compra de {message.item?.name} sin confirmar · reemplazada</SupersededNote>
+        )}
+        {suggested.length > 0 && isActive && (
+          <div className="mt-2">
+            <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold tracking-wide text-accent-light uppercase">
+              <Sparkles className="size-3" aria-hidden="true" />
+              {suggested.length === 1 ? 'Recomendado para vos' : 'Recomendados para vos'}
+            </p>
+            <ul className="grid gap-1.5">
+              {suggested.map((product) => (
+                <RecommendedProduct
+                  key={product.id}
+                  product={product}
+                  verdict={verdicts[product.id]}
+                  onAddToCart={onAddToCart}
+                />
+              ))}
+            </ul>
           </div>
+        )}
+        {suggested.length > 0 && !isActive && (
+          <SupersededNote>
+            Sugerencia anterior: {suggested.map(({ name }) => name).join(', ')}
+          </SupersededNote>
         )}
       </div>
     </li>
@@ -78,10 +124,15 @@ export default function ChatWidget({
   isOpen,
   onToggle,
   products,
+  verdicts,
   onAddToCart,
   onOrderCompleted,
 }) {
   const { messages, isLoading, send, attachOrder } = chat;
+  // La recomendación vigente se deriva del último mensaje: al enviar uno nuevo se limpia al instante.
+  const latest = messages.at(-1);
+  const activeMessageId =
+    latest?.role === 'assistant' && !latest.isError && !isLoading ? latest.id : null;
   const [draft, setDraft] = useState('');
   const logRef = useRef(null);
   const inputRef = useRef(null);
@@ -144,7 +195,9 @@ export default function ChatWidget({
               <ChatBubble
                 key={message.id}
                 message={message}
+                isActive={message.id === activeMessageId}
                 products={products}
+                verdicts={verdicts}
                 onAddToCart={onAddToCart}
                 onOrderCompleted={(messageId, order) => {
                   attachOrder(messageId, order);
@@ -166,14 +219,22 @@ export default function ChatWidget({
 
           {messages.length === 1 && (
             <div className="flex flex-col items-stretch gap-1.5 px-3 pb-2">
+              <p className="flex items-center gap-1.5 px-1 text-[11px] font-semibold tracking-wide text-ink-400 uppercase">
+                <Sparkles className="size-3 text-accent-light" aria-hidden="true" />
+                Probá preguntando
+              </p>
               {SUGGESTIONS.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
                   onClick={() => send(suggestion)}
-                  className="rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-left text-sm text-ink-300 transition-colors hover:border-primary-light hover:text-white"
+                  className="group flex items-center justify-between gap-2 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-left text-sm text-ink-300 transition-all hover:-translate-y-px hover:border-primary-light hover:text-white"
                 >
                   {suggestion}
+                  <SendHorizontal
+                    className="size-3.5 shrink-0 text-ink-400 opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-hidden="true"
+                  />
                 </button>
               ))}
             </div>

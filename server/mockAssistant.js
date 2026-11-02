@@ -5,10 +5,13 @@ const MAX_ALTERNATIVES = 3;
 
 const RECOMMENDATIONS = [
   { pattern: /\b(rol|rpg)\b/, ids: ['baldurs-gate-3', 'cyberpunk-2077', 'elden-ring'], title: 'Para rol, estas son mis tres fijas' },
-  { pattern: /\b(liviano|livianos|bajos requisitos|indie|notebook vieja|pc vieja)\b/, ids: ['stardew-valley', 'terraria', 'celeste'], title: 'Livianos y buenísimos' },
-  { pattern: /\b(coop|cooperativo|amigos|multijugador)\b/, ids: ['helldivers-2', 'baldurs-gate-3', 'terraria'], title: 'Para jugar con amigos, andá a lo seguro' },
+  { pattern: /\b(liviano|livianos|bajos requisitos|indie|notebook vieja|pc vieja)\b/, ids: ['stardew-valley', 'portal-2', 'dead-cells'], title: 'Livianos y buenísimos' },
+  { pattern: /\b(coop|cooperativo|amigos|multijugador)\b/, ids: ['helldivers-2', 'baldurs-gate-3', 'portal-2'], title: 'Para jugar con amigos, andá a lo seguro' },
   { pattern: /\b(futbol|deportes?)\b/, ids: ['ea-sports-fc-25'], title: 'Para fútbol no hay discusión' },
-  { pattern: /\b(accion|roguelike|rapido)\b/, ids: ['hades-2', 'hollow-knight', 'helldivers-2'], title: 'Si buscás acción pura' },
+  { pattern: /\b(carreras?|autos?|racing)\b/, ids: ['forza-horizon-5'], title: 'Para quemar asfalto' },
+  { pattern: /\b(shooter|disparos|fps)\b/, ids: ['doom-eternal', 'helldivers-2'], title: 'Si querés tiros' },
+  { pattern: /\b(mundo abierto|open world|western)\b/, ids: ['red-dead-redemption-2', 'cyberpunk-2077', 'hogwarts-legacy'], title: 'Mundos abiertos para perderte' },
+  { pattern: /\b(accion|roguelike|rapido)\b/, ids: ['hades-2', 'dead-cells', 'black-myth-wukong'], title: 'Si buscás acción pura' },
 ];
 
 const formatPrice = (price) => `USD ${price.toFixed(2)}`;
@@ -132,13 +135,41 @@ function listProducts(items, title) {
   };
 }
 
-export function getMockReply(message, products, analysis) {
+// El cliente descartó un juego sin nombrar otro: se proponen opciones nuevas, nunca el descartado.
+function replyForChangeOfMind(discarded, products, analysis) {
+  const discardedIds = new Set(discarded.map(({ id }) => id));
+  const [first] = discarded;
+  const options = analysis
+    ? analysis.alternatives
+        .filter(({ productId }) => !discardedIds.has(productId))
+        .map(({ productId }) => products.find(({ id }) => id === productId))
+    : products
+        .filter(({ id, stockKeys }) => stockKeys > 0 && !discardedIds.has(id))
+        .sort(
+          (a, b) =>
+            b.categories.filter((category) => first.categories.includes(category)).length -
+            a.categories.filter((category) => first.categories.includes(category)).length,
+        );
+  const picks = options.filter(Boolean).slice(0, MAX_ALTERNATIVES);
+  const names = discarded.map(({ name }) => name).join(', ');
+
+  if (picks.length === 0) {
+    return {
+      reply: `¡Dale, olvidate de ${names}! Contame qué género te gusta o qué PC tenés y te busco otro.`,
+      suggestedProducts: [],
+    };
+  }
+  return listProducts(picks, `¡Dale, descartamos ${names}! ${analysis ? 'Estos te corren en tu equipo' : 'Mirá estas otras opciones'}`);
+}
+
+export function getMockReply(message, products, analysis, discarded = []) {
+  const product = findMentionedProduct(message, products);
+  if (discarded.length > 0 && !product) return replyForChangeOfMind(discarded, products, analysis);
   if (analysis) return buildCompatibilityReply(analysis);
 
   const text = normalize(message);
   const available = products.filter(({ stockKeys }) => stockKeys > 0);
 
-  const product = findMentionedProduct(message, products);
   if (product) return replyForProduct(product, text);
 
   const platform = ['Steam', 'Epic', 'Xbox'].find((name) => text.includes(name.toLowerCase()));

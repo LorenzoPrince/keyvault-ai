@@ -12,6 +12,11 @@ async function request(path, options) {
   if (!response.ok) {
     const error = new Error(data?.error ?? 'Ocurrió un error inesperado. Probá de nuevo.');
     error.status = response.status;
+    // 403, o un 401 de Nginx (auth_basic responde HTML, no el JSON de la API): acceso restringido.
+    error.isRestricted =
+      response.status === 403 ||
+      (response.status === 401 &&
+        (/^basic/i.test(response.headers.get('www-authenticate') ?? '') || data === null));
     throw error;
   }
   return data;

@@ -147,9 +147,14 @@ export default function CartDrawer({
 
         {view === 'cart' && items.length === 0 && (
           <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-            <ShoppingCart className="size-12 text-ink-700" aria-hidden="true" />
-            <p className="mt-4 font-semibold">Tu carrito está vacío</p>
-            <p className="mt-1 text-sm text-ink-400">Sumá un juego y activalo en minutos.</p>
+            <span className="relative grid size-20 place-items-center rounded-2xl border border-primary/30 bg-primary/10 shadow-glow">
+              <ShoppingCart className="size-9 text-primary-light" aria-hidden="true" />
+              <span className="absolute -top-1 -right-1 size-3 animate-ping rounded-full bg-accent/60" aria-hidden="true" />
+            </span>
+            <p className="mt-5 font-display text-lg font-semibold">Tu carrito está vacío</p>
+            <p className="mt-1 max-w-xs text-sm text-ink-400">
+              Sumá un juego y activalo en minutos. ¿No sabés si te corre? Analizá tu PC antes de comprar.
+            </p>
             <button
               type="button"
               onClick={onClose}

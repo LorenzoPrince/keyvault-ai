@@ -26,6 +26,7 @@ function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [verdicts, setVerdicts] = useState({});
   const cart = useCart();
   const chat = useChat();
 
@@ -86,6 +87,12 @@ function App() {
     chat.send(text);
   };
 
+  // Cambiar el hardware invalida los badges: solo valen para el equipo analizado.
+  const handleHardwareChange = (selection) => {
+    setHardware(selection);
+    setVerdicts({});
+  };
+
   const handleAddFromCompatibility = (product) => {
     setCompatibilityCheck(null);
     handleAddToCart(product);
@@ -126,6 +133,8 @@ function App() {
               status={catalogStatus}
               onRetry={retryCatalog}
               quantities={cart.quantities}
+              verdicts={verdicts}
+              onClearVerdicts={() => setVerdicts({})}
               onAdd={handleAddToCart}
               onAsk={handleAskAssistant}
               onCheck={(product) => setCompatibilityCheck({ productId: product.id })}
@@ -155,9 +164,10 @@ function App() {
           initialProductId={compatibilityCheck.productId}
           products={products}
           selection={hardware}
-          onSelectionChange={setHardware}
+          onSelectionChange={handleHardwareChange}
           onClose={() => setCompatibilityCheck(null)}
           onAddToCart={handleAddFromCompatibility}
+          onResult={setVerdicts}
         />
       )}
 
@@ -174,6 +184,7 @@ function App() {
           isOpen={isChatOpen}
           onToggle={() => setIsChatOpen((open) => !open)}
           products={products}
+          verdicts={verdicts}
           onAddToCart={handleAddToCart}
           onOrderCompleted={loadProducts}
         />

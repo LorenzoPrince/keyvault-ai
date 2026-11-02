@@ -63,6 +63,8 @@ export default function WhatsAppRescueModal({ onClose, onOrderCompleted }) {
   const handleRescue = async (event) => {
     event.preventDefault();
     setError('');
+    setResult(null);
+    setSelectedId(null);
     setIsLoading(true);
     const startedAt = performance.now();
     try {

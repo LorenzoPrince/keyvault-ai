@@ -20,6 +20,7 @@ function storeToken(token) {
   }
 }
 
+// Estados: loading | ready | error | locked (falta ADMIN_TOKEN) | restricted (Nginx rechazó la credencial).
 export function useAdminStats() {
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('loading');
@@ -34,17 +35,28 @@ export function useAdminStats() {
           setStatus('ready');
           setUpdatedAt(new Date());
         })
-        .catch((error) => setStatus(error.status === 401 ? 'locked' : 'error')),
+        .catch((error) => {
+          // Sin credenciales válidas no queda ningún dato del panel en pantalla.
+          if (error.isRestricted || error.status === 401) setStats(null);
+          setStatus(error.isRestricted ? 'restricted' : error.status === 401 ? 'locked' : 'error');
+        }),
     [token],
   );
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  // Solo se refresca con acceso concedido: reintentar un 401 de Nginx volvería a abrir
+  // el diálogo de usuario y contraseña del navegador cada pocos segundos.
+  const canPoll = status === 'ready' || status === 'error';
+  useEffect(() => {
+    if (!canPoll) return undefined;
     const timer = setInterval(() => {
       if (!document.hidden) refresh();
     }, REFRESH_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [refresh]);
+  }, [canPoll, refresh]);
 
   const unlock = (nextToken) => {
     storeToken(nextToken);

@@ -67,6 +67,14 @@ const ALIASES = {
   'hollow-knight': ['hollow'],
   terraria: ['terraria'],
   celeste: ['celeste'],
+  'red-dead-redemption-2': ['red dead', 'rdr2', 'rdr 2'],
+  'forza-horizon-5': ['forza', 'fh5'],
+  'hogwarts-legacy': ['hogwarts', 'harry potter'],
+  'black-myth-wukong': ['wukong', 'black myth'],
+  'doom-eternal': ['doom'],
+  'dead-cells': ['dead cells'],
+  'portal-2': ['portal'],
+  starfield: ['starfield'],
 };
 
 export const normalize = (text) =>
