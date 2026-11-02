@@ -100,6 +100,7 @@ export default function CompatibilityModal({
   onSelectionChange,
   onClose,
   onAddToCart,
+  onResult,
 }) {
   const dialogRef = useRef(null);
   const resultRef = useRef(null);
@@ -135,14 +136,15 @@ export default function CompatibilityModal({
     setIsChecking(true);
     try {
       const { cpuId, gpuId, ramGb } = selection;
-      setResult(
-        await checkCompatibility({
-          cpuId,
-          gpuId,
-          ramGb: Number(ramGb),
-          ...(productId ? { productId } : {}),
-        }),
-      );
+      const checked = await checkCompatibility({
+        cpuId,
+        gpuId,
+        ramGb: Number(ramGb),
+        ...(productId ? { productId } : {}),
+      });
+      setResult(checked);
+      // El análisis cubre todo el catálogo: las tarjetas muestran su badge aunque se haya consultado un juego.
+      onResult?.(Object.fromEntries(checked.results.map(({ productId: id, verdict }) => [id, verdict])));
     } catch (checkError) {
       setError(checkError.message);
     } finally {

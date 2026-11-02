@@ -34,6 +34,9 @@ const PRIVACY_NOTICE =
 const PURCHASE_INTENT =
   /\b(quiero|voy a|vamos a) (comprar\w*|llevar\w*)|\bcomprarlo\b|\blo compro\b|\bcomprame\b|\breserv[ao]\w*|\bme lo llevo\b|\blo llevo\b|\blo quiero\b/;
 const PURCHASE_NEGATION = /\bno (lo )?(quiero|voy a|compro|llevo|reserves)\b/;
+// "No, al final quiero otro": el cliente descarta el juego anterior en lugar de confirmarlo.
+const CHANGE_OF_MIND =
+  /\b(otros?|otras?|en vez|en lugar|mejor no|ya no (lo |la )?quiero|me arrepenti\w*|descart\w*|no me convence|cambi\w* de (juego|idea|opinion))\b/;
 const CART_TAG = /\[\[carrito:([^\]]*)\]\]/gi;
 const INCOMPATIBILITY_WARNING =
   /\bno\b.*\b(corr|funcion|anda|alcanz|cumpl|llega|compatible|soporta)\w*|incompatible|insuficiente|por debajo/s;
@@ -93,8 +96,16 @@ function generateOrderId() {
 
 function buildSystemPrompt(analysis) {
   const catalog = products.map(
-    ({ coverImage: _coverImage, minCpuScore: _cpu, minGpuScore: _gpu, minCores: _cores, minSpecs: _specs, ...product }) =>
-      product,
+    ({
+      coverImage: _coverImage,
+      minCpuScore: _cpu,
+      minGpuScore: _gpu,
+      minCores: _cores,
+      minSpecs: _specs,
+      recSpecs: _recSpecs,
+      requirementTier: _tier,
+      ...product
+    }) => product,
   );
   const verified = analysis
     ? `\n\nANÁLISIS VERIFICADO del equipo del cliente (JSON):\n${JSON.stringify({
@@ -182,23 +193,46 @@ const hasPurchaseIntent = (message) => {
   return PURCHASE_INTENT.test(text) && !PURCHASE_NEGATION.test(text);
 };
 
+// Juegos que el cliente descarta: los del último turno que nombró alguno, salvo que los vuelva a pedir.
+function findDiscardedProducts(message, history) {
+  if (!CHANGE_OF_MIND.test(normalize(message).trim())) return [];
+  const requested = new Set(findMentionedProducts(message, products).map(({ id }) => id));
+  for (const { content } of [...history].reverse()) {
+    const mentioned = findMentionedProducts(content, products);
+    if (mentioned.length > 0) return mentioned.filter(({ id }) => !requested.has(id));
+  }
+  return [];
+}
+
 // "Quiero comprarlo" remite al último juego nombrado; si ese turno nombró varios, es ambiguo.
-function findPurchaseTarget(message, history) {
-  for (const { content } of [{ content: message }, ...[...history].reverse()]) {
+// Si el cliente cambió de opinión, solo vale lo que nombra en este mensaje: nunca el juego viejo.
+function findPurchaseTarget(message, history, isChangingMind = false) {
+  const turns = isChangingMind ? [] : [...history].reverse();
+  for (const { content } of [{ content: message }, ...turns]) {
     const mentioned = findMentionedProducts(content, products);
     if (mentioned.length > 0) return mentioned.length === 1 ? mentioned[0] : null;
   }
   return null;
 }
 
+const changeOfMindInstruction = (discarded) =>
+  discarded.length > 0
+    ? `\n\nCAMBIO DE OPINIÓN: el cliente descartó ${discarded.map(({ name }) => name).join(', ')}. No lo vuelvas a ofrecer ni incluyas su id en [[carrito]]: proponé otras opciones del catálogo o preguntale qué busca.`
+    : '';
+
 const closingInstruction = ({ name, price }) =>
   `\n\nCIERRE: el cliente quiere comprar ${name} (USD ${price}). Festejá la decisión en una frase y decile que deje su email y toque "Confirmar y Emitir Key" en la tarjeta de abajo. No hables de requisitos y no agregues la línea [[carrito]].`;
 
-async function generateReply({ message, history, analysis, closing = null }) {
+async function generateReply({ message, history, analysis, closing = null, discarded = [] }) {
+  const discardedIds = new Set(discarded.map(({ id }) => id));
+  const withoutDiscarded = (result) => ({
+    ...result,
+    suggestedProducts: result.suggestedProducts.filter((id) => !discardedIds.has(id)),
+  });
   const fallback = () => ({
     ...(closing
       ? { reply: buildClosingReply(closing), suggestedProducts: [] }
-      : getMockReply(message, products, analysis)),
+      : withoutDiscarded(getMockReply(message, products, analysis, discarded))),
     source: 'mock',
   });
   if (!openai) return fallback();
@@ -207,14 +241,14 @@ async function generateReply({ message, history, analysis, closing = null }) {
     const content = await requestCompletion([
       {
         role: 'system',
-        content: `${buildSystemPrompt(analysis)}${closing ? closingInstruction(closing) : ''}`,
+        content: `${buildSystemPrompt(analysis)}${changeOfMindInstruction(discarded)}${closing ? closingInstruction(closing) : ''}`,
       },
       ...history,
       { role: 'user', content: message },
     ]);
     const parsed = parseAssistantReply(content);
     const checked = parsed.reply ? enforceCompatibility(parsed, analysis) : null;
-    return checked ? { ...checked, source: 'openai' } : fallback();
+    return checked ? { ...withoutDiscarded(checked), source: 'openai' } : fallback();
   } catch (err) {
     // Una caída de OpenAI no debe cortar la venta: responde el asesor local y queda registrado.
     console.error('Error de OpenAI:', err?.status ?? '', err?.message);
@@ -492,9 +526,10 @@ app.post('/api/chat', async (req, res) => {
   const safeHistory = sanitizeHistory(history);
   const customerMessages = safeHistory.filter(({ role }) => role === 'user').map(({ content }) => content);
   const hardware = parseHardware([...customerMessages, message]);
+  const discarded = findDiscardedProducts(message, safeHistory);
   const wantsToBuy = hasPurchaseIntent(message);
   const mentioned = wantsToBuy
-    ? findPurchaseTarget(message, safeHistory)
+    ? findPurchaseTarget(message, safeHistory, discarded.length > 0)
     : findMentionedProduct(message, products);
   const analysis = hardware ? analyzeCatalog(products, hardware, mentioned?.id ?? null) : null;
 
@@ -503,7 +538,7 @@ app.post('/api/chat', async (req, res) => {
     wantsToBuy && mentioned?.stockKeys > 0 && (!analysis?.target || isViable(analysis.target));
   const closing = isSafeToClose ? mentioned : null;
 
-  const result = await generateReply({ message, history: safeHistory, analysis, closing });
+  const result = await generateReply({ message, history: safeHistory, analysis, closing, discarded });
   const suggestedProducts = closing ? [] : result.suggestedProducts.slice(0, MAX_CHAT_SUGGESTIONS);
   recordAnalysis(sessionId, analysis, closing ? [closing.id] : suggestedProducts, mentioned ? [mentioned.id] : []);
 
@@ -514,6 +549,7 @@ app.post('/api/chat', async (req, res) => {
       ? { hardware: analysis.hardware, target: summarizeTarget(analysis.target) }
       : null,
     source: result.source,
+    discardedProducts: discarded.map(({ id }) => id),
     ...(closing && {
       action: 'PROMPT_CHECKOUT',
       item: { id: closing.id, name: closing.name, price: closing.price },

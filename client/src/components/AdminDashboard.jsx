@@ -11,7 +11,9 @@ import {
   RotateCw,
   Search,
   ShieldAlert,
+  ShieldX,
   ShoppingBag,
+  Store,
 } from 'lucide-react';
 import { useAdminStats } from '../hooks/useAdminStats.js';
 import { formatPrice, formatShortDate } from '../lib/format.js';
@@ -318,8 +320,59 @@ function LockedPanel({ wasRejected, onUnlock }) {
   );
 }
 
+function RestrictedPanel({ onGoToStore }) {
+  return (
+    <section
+      aria-labelledby="restricted-title"
+      className="relative mx-auto mt-16 max-w-md overflow-hidden rounded-2xl border border-danger/30 bg-ink-850 p-8 text-center shadow-card"
+    >
+      <div
+        className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-danger via-primary to-accent"
+        aria-hidden="true"
+      />
+      <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-danger/10 text-danger ring-1 ring-danger/30">
+        <ShieldX className="size-8" aria-hidden="true" />
+      </span>
+      <p className="mt-5 font-mono text-xs tracking-[0.2em] text-danger uppercase">Error 401 · Zona privada</p>
+      <h1 id="restricted-title" className="mt-2 font-display text-2xl font-bold">
+        Acceso restringido
+      </h1>
+      <p className="mt-2 text-sm text-ink-300">
+        El panel de administración requiere usuario y contraseña. Sin credenciales válidas no se
+        muestran métricas, ventas ni keys.
+      </p>
+      <div className="mt-6 grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => window.location.assign(window.location.pathname)}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 font-semibold text-white transition-colors hover:bg-primary-light hover:text-ink-950"
+        >
+          <Lock className="size-4" aria-hidden="true" />
+          Iniciar sesión
+        </button>
+        <button
+          type="button"
+          onClick={onGoToStore}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ink-700 px-4 font-semibold text-ink-100 transition-colors hover:border-accent hover:text-accent-light"
+        >
+          <Store className="size-4" aria-hidden="true" />
+          Volver a la tienda
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export default function AdminDashboard({ onGoToStore }) {
   const { stats, status, updatedAt, unlock, wasRejected } = useAdminStats();
+
+  if (status === 'restricted') {
+    return (
+      <div className="px-4">
+        <RestrictedPanel onGoToStore={onGoToStore} />
+      </div>
+    );
+  }
 
   if (status === 'locked') {
     return (
@@ -338,7 +391,10 @@ export default function AdminDashboard({ onGoToStore }) {
             <p className="mt-3">No pudimos cargar las métricas. Reintentando...</p>
           </>
         ) : (
-          <p>Cargando métricas...</p>
+          <p className="inline-flex items-center gap-2">
+            <Lock className="size-4 animate-pulse text-primary-light" aria-hidden="true" />
+            Verificando credenciales...
+          </p>
         )}
       </div>
     );

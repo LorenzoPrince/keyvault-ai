@@ -46,3 +46,12 @@ En la venta de licencias digitales de videojuegos y software por WhatsApp y cana
 3. Observar el veredicto en tiempo real (Incompatible) y las sugerencias automáticas de juegos ligeros.
 4. Solicitar la compra en el chat (*"Quiero comprarlo"*), completar el checkout rápido y recibir la clave digital en pantalla.
 5. Acceder a `https://dwday-1252412.online/admin` para verificar el impacto en las métricas de negocio.
+
+---
+
+## 5. Seguridad del Panel `/admin` y Despliegue
+* **Doble barrera:** Nginx protege `/admin` y `/api/admin` con autenticación básica HTTP (`auth_basic "Acceso Restringido - Administracion"`) y, opcionalmente, Express exige `ADMIN_TOKEN`.
+* **Frontend:** si la API responde 401/403, React muestra la pantalla *Acceso restringido* y no renderiza métricas, ventas ni keys.
+* **Credenciales fuera de Git:** `sudo bash deploy/setup-admin-auth.sh` genera `/etc/nginx/.htpasswd` (usuario `admin`, contraseña aleatoria mostrada una sola vez).
+* **Configuración:** los bloques a pegar en el `server {}` de Nginx están en `deploy/nginx-admin-auth.conf`.
+* **Deploy:** `WEB_ROOT=/ruta/publica bash deploy/deploy.sh` compila Vite, copia `client/dist` a la carpeta pública, valida Nginx (`nginx -t`), recarga Nginx, reinicia PM2 y verifica que `/admin` devuelva 401 sin credenciales.

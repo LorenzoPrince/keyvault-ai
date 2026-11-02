@@ -1,4 +1,4 @@
-import { KeyRound, LayoutDashboard, ShoppingCart, Sparkles, Store, Zap } from 'lucide-react';
+import { Gamepad2, LayoutDashboard, ShoppingCart, Sparkles, Store, Zap } from 'lucide-react';
 import { ADMIN_PATH, STORE_PATH } from '../hooks/useRoute.js';
 
 const NAV_ITEMS = [
@@ -25,10 +25,10 @@ export default function Header({ view, onNavigate, cartCount, onOpenCart }) {
           <a
             href={STORE_PATH}
             onClick={(event) => handleNavigate(event, STORE_PATH)}
-            className="flex items-center gap-2.5 rounded-lg"
+            className="group flex items-center gap-2.5 rounded-lg"
           >
-            <span className="grid size-9 place-items-center rounded-lg bg-linear-to-br from-primary to-accent shadow-glow">
-              <KeyRound className="size-5 text-white" aria-hidden="true" />
+            <span className="grid size-9 place-items-center rounded-lg bg-linear-to-br from-primary to-accent shadow-glow ring-1 ring-accent-light/40 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
+              <Gamepad2 className="size-5 text-white drop-shadow-[0_0_6px_rgb(34_211_238/0.8)]" aria-hidden="true" />
             </span>
             <span className="flex flex-col whitespace-nowrap">
               <span className="font-display text-lg leading-tight font-bold tracking-tight">

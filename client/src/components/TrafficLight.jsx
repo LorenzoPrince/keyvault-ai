@@ -1,9 +1,9 @@
 const VERDICTS = {
-  compatible: { lamp: 'green', label: 'Apto' },
-  limit: { lamp: 'amber', label: 'Apto al límite' },
+  compatible: { lamp: 'green', label: 'Compatible' },
+  limit: { lamp: 'amber', label: 'Al límite' },
   partial: { lamp: 'amber', label: 'Faltan datos' },
   incompatible: { lamp: 'red', label: 'No compatible' },
-  console: { lamp: 'red', label: 'Solo Xbox' },
+  console: { lamp: 'red', label: 'Solo consola' },
 };
 
 const LAMPS = [
