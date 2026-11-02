@@ -50,8 +50,6 @@ En la venta de licencias digitales de videojuegos y software por WhatsApp y cana
 ---
 
 ## 5. Seguridad del Panel `/admin` y Despliegue
-* **Doble barrera:** Nginx protege `/admin` y `/api/admin` con autenticación básica HTTP (`auth_basic "Acceso Restringido - Administracion"`) y, opcionalmente, Express exige `ADMIN_TOKEN`.
+* **Acceso abierto:** `/admin` y `/api/admin` no tienen autenticación en Nginx. Express solo exige `ADMIN_TOKEN` si está definido en `server/.env` (vacío = abierto).
 * **Frontend:** si la API responde 401/403, React muestra la pantalla *Acceso restringido* y no renderiza métricas, ventas ni keys.
-* **Credenciales fuera de Git:** `sudo bash deploy/setup-admin-auth.sh` genera `/etc/nginx/.htpasswd` (usuario `admin`, contraseña aleatoria mostrada una sola vez).
-* **Configuración:** los bloques a pegar en el `server {}` de Nginx están en `deploy/nginx-admin-auth.conf`.
-* **Deploy:** `WEB_ROOT=/ruta/publica bash deploy/deploy.sh` compila Vite, copia `client/dist` a la carpeta pública, valida Nginx (`nginx -t`), recarga Nginx, reinicia PM2 y verifica que `/admin` devuelva 401 sin credenciales.
+* **Deploy:** `WEB_ROOT=/ruta/publica bash deploy/deploy.sh` compila Vite, copia `client/dist` a la carpeta pública, valida Nginx (`nginx -t`), recarga Nginx, reinicia PM2 y verifica que `/admin` y `/api/products` respondan 200.
